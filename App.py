@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.widgets import DirectoryTree
 from textual.binding import Binding
@@ -24,13 +26,34 @@ class HolaMundo(App):
         yield Footer()
         yield Header()
 
-        ### definicion de acciones ###
+        ###### definicion de acciones ######
 
     def action_help(self) -> None:  # ? -> menu de help
         self.notify("Le da ayuda... se va... epicamente")
 
     def action_delete(self) -> None:  # Del -> elimina
-        self.notify("Se borra un arhivo... epicamente")
+        tree = self.query_one(DirectoryTree)
+
+        node = tree.cursor_node
+
+        if node is None or node.data is None:
+            self.notify("No hay ningún archivo seleccionado.", severity="warning")
+            return
+
+        target_path: Path = node.data.path
+
+        try:
+            if target_path.is_file():
+                os.remove(target_path)  # Borra el archivo
+                self.notify(f"Archivo eliminado: {target_path.name}")
+            elif target_path.is_dir():
+                os.rmdir(target_path)
+                self.notify(f"Carpeta eliminada: {target_path.name}")
+
+            tree.reload()
+
+        except Exception as e:
+            self.notify(f"Error al eliminar: {e}", severity="error")
 
     def action_down(self) -> None:  # j -> baja
         tree = self.query_one(DirectoryTree)
