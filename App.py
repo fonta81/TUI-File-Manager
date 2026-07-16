@@ -30,6 +30,14 @@ class HolaMundo(App):  # iniciamos la app
         # definimos las acciones que se habian asignado en el bindings:
         ###### definicion de acciones ######
 
+    def action_down(self) -> None:  # j -> baja
+        tree = self.query_one(DirectoryTree)  # cual es el path del cursor
+        tree.action_cursor_down()  # baja el cursor una vez
+
+    def action_upp(self) -> None:  # k -> sube
+        tree = self.query_one(DirectoryTree)  # cual es el path del cursor
+        tree.action_cursor_up()  # sube el cursor una vez
+
     def action_help(self) -> None:  # ? -> menu de help
         self.notify("Le da ayuda... se va... epicamente")
 
@@ -56,14 +64,6 @@ class HolaMundo(App):  # iniciamos la app
 
         except Exception as e:  # en caso de error:
             self.notify(f"Error al eliminar: {e}", severity="error")
-
-    def action_down(self) -> None:  # j -> baja
-        tree = self.query_one(DirectoryTree)  # cual es el path del cursor
-        tree.action_cursor_down()  # baja el cursor una vez
-
-    def action_upp(self) -> None:  # k -> sube
-        tree = self.query_one(DirectoryTree)  # cual es el path del cursor
-        tree.action_cursor_up()  # sube el cursor una vez
 
 
 if __name__ == "__main__":
