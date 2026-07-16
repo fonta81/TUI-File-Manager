@@ -2,9 +2,10 @@ from textual.app import App, ComposeResult
 from textual.widgets import DirectoryTree
 from textual.binding import Binding
 from textual.widgets import Footer
+from textual.widgets import Header
 
 
-class DirectoryTreeApp(App):
+class HolaMundo(App):
     BINDINGS = [
         Binding(key="q", action="quit", description="Quit the app"),
         Binding(
@@ -20,6 +21,7 @@ class DirectoryTreeApp(App):
     def compose(self) -> ComposeResult:
         yield DirectoryTree("./")
         yield Footer()
+        yield Header(name="hola mundo")
 
         ### definicion de acciones ###
 
@@ -28,5 +30,5 @@ class DirectoryTreeApp(App):
 
 
 if __name__ == "__main__":
-    app = DirectoryTreeApp()
+    app = HolaMundo()
     app.run()
