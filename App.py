@@ -21,6 +21,11 @@ class DirectoryTreeApp(App):
         yield DirectoryTree("./")
         yield Footer()
 
+        ### definicion de acciones ###
+
+    def action_delete(self) -> None:
+        self.notify("Hola Mundo ")
+
 
 if __name__ == "__main__":
     app = DirectoryTreeApp()
