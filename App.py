@@ -13,16 +13,16 @@ from textual.containers import Grid
 
 class CreateFolderModal(ModalScreen[str]):
     def compose(self) -> ComposeResult:
-        yield Grid(
+        yield Grid(  # pide el nombre al usuario -> lo guarda en la id
             Input(placeholder="Nombre de la nueva carpeta...", id="folder_name"),
             id="modal_dialog",
         )
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        if event.value.strip():
-            self.dismiss(event.value.strip())
+        if event.value.strip():  # Quita espacios:
+            self.dismiss(event.value.strip())  # cierra ventana y regresa valores
         else:
-            self.dismiss(None)
+            self.dismiss(None)  # cierra ventana y regresa none
 
 
 class HolaMundo(App):  # iniciamos la app
@@ -83,32 +83,33 @@ class HolaMundo(App):  # iniciamos la app
         except Exception as e:  # en caso de error:
             self.notify(f"Error al eliminar: {e}", severity="error")
 
-    def action_create_folder(self) -> None:
-        tree = self.query_one(DirectoryTree)
+    def action_create_folder(self) -> None:  # m -> makedir
+        tree = self.query_one(DirectoryTree)  # Ruta de donde se encuentra el .py
 
-        node = tree.cursor_node
-        if node is not None and node.data is not None:
-            current_path: Path = node.data.path
+        node = tree.cursor_node  # Ruta del cursor
+        if node is not None and node.data is not None:  # Hay algo seleccionado?:
+            current_path: Path = node.data.path  # guarda el path
+            # El path es de un archivo o de una capreta:
             base_dir = current_path.parent if current_path.is_file() else current_path
-        else:
+        else:  # seleccion == none -> creara la carpeta en la raiz:
             base_dir = Path("./")
 
         def on_modal_close(folder_name: str | None) -> None:
-            if not folder_name:
-                return
+            if not folder_name:  # si no dijito el nombre:
+                return  # salir
 
-            new_folder_path = base_dir / folder_name
+            new_folder_path = base_dir / folder_name  # crea la ruta de la carpeta nueva
 
             try:
-                os.makedirs(new_folder_path, exist_ok=False)
-                self.notify(f"Carpeta creada: {folder_name}")
+                os.makedirs(new_folder_path, exist_ok=False)  # crea la carpeta
+                self.notify(f"Carpeta creada: {folder_name}")  # mensaje
 
-                tree.reload()
-            except FileExistsError:
+                tree.reload()  # refresca el menu
+            except FileExistsError:  # si el archivo existe:
                 self.notify(
                     "Error: Ya existe una carpeta con ese nombre.", severity="error"
                 )
-            except Exception as e:
+            except Exception as e:  # Cualquier otro error:
                 self.notify(f"Error al crear carpeta: {e}", severity="error")
 
         self.push_screen(CreateFolderModal(), on_modal_close)
