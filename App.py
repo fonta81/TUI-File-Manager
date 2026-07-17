@@ -14,7 +14,7 @@ from textual.containers import Grid
 class CreateFolderModal(ModalScreen[str]):
     def compose(self) -> ComposeResult:
         yield Grid(  # pide el nombre al usuario -> lo guarda en la id
-            Input(placeholder="Nombre de la nueva carpeta...", id="folder_name"),
+            Input(placeholder="Nombre: ", id="folder_name"),
             id="modal_dialog",
         )
 
@@ -38,6 +38,7 @@ class HolaMundo(App):  # iniciamos la app
         Binding(key="j", action="down", description="Scroll down", show=False),
         Binding(key="k", action="upp", description="Scroll up", show=False),
         Binding(key="n", action="create_folder", description="New Folder"),
+        Binding(key="r", action="rename", description="Rename"),
     ]
 
     def compose(self) -> ComposeResult:  # lo que se "Imprimira" en la terminal:
@@ -112,6 +113,41 @@ class HolaMundo(App):  # iniciamos la app
             except Exception as e:  # Cualquier otro error:
                 self.notify(f"Error al crear carpeta: {e}", severity="error")
 
+        self.push_screen(CreateFolderModal(), on_modal_close)
+
+    def action_rename(self) -> None:  # r -> Rename
+        # rutas:
+        tree = self.query_one(DirectoryTree)  # guarda la ruta actual
+        node = tree.cursor_node  # guarda la ruta del cursor
+        # en caso este vacio:
+        if node is None or node.data is None:  # no hay nada -> se sale de la funcion
+            self.notify("No hay ningún archivo seleccionado.", severity="warning")
+            return
+        # el path actual:
+        current_path: Path = node.data.path
+
+        # acceda a la ventana de rename:
+        def on_modal_close(folder_name: str | None) -> None:
+            if not folder_name:  # en caso de que este vacio
+                return  # salir
+
+            # ruta del archivo con el nombre remplazado
+            New_path = current_path.with_stem(folder_name)
+
+            try:  # el codgio que cambia el nombre:
+                current_path.rename(New_path)
+                self.notify("Se renombro correctamente")  # mensaje
+                tree.reload()  # refresca el menu
+
+            except FileExistsError:  # si el archivo existe:
+                self.notify(
+                    "Error: ya existe un archivo/carpeta con ese nombre",
+                    severity="error",
+                )
+            except Exception as e:  # Cualquier otro error:
+                self.notify(f"Error al crear carpeta: {e}", severity="error")
+
+        # abre la ventana de input:
         self.push_screen(CreateFolderModal(), on_modal_close)
 
 
