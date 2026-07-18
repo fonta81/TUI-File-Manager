@@ -9,10 +9,14 @@ from textual.screen import ModalScreen
 from textual.widgets import DirectoryTree, Footer, Header, Input
 
 
-class CreateFolderModal(ModalScreen[str]):
+class CreateFolderModal(ModalScreen[str]):  # ventana que pedira nombres,ect...
+    def __init__(self, placeholder_text: str = "Nombre: ", **kwargs):
+        super().__init__(**kwargs)
+        self.placeholder_text = placeholder_text
+
     def compose(self) -> ComposeResult:
         yield Grid(  # pide el nombre al usuario -> lo guarda en la id
-            Input(placeholder="Nombre: ", id="folder_name"),
+            Input(placeholder=self.placeholder_text, id="folder_name"),
             id="modal_dialog",
         )
 
@@ -37,6 +41,7 @@ class HolaMundo(App):  # iniciamos la app
         Binding(key="k", action="upp", description="Scroll up", show=False),
         Binding(key="n", action="create_folder", description="New Folder"),
         Binding(key="r", action="rename", description="Rename"),
+        Binding(key="m", action="move", description="move"),
     ]
 
     def compose(self) -> ComposeResult:  # lo que se "Imprimira" en la terminal:
@@ -82,6 +87,53 @@ class HolaMundo(App):  # iniciamos la app
         except Exception as e:  # en caso de error:
             self.notify(f"Error al eliminar: {e}", severity="error")
 
+    def action_move(self) -> None:  # m -> Mover archivo o carpeta
+        tree = self.query_one(DirectoryTree)
+        node = tree.cursor_node
+
+        # 1. Validación: Verificar si hay algo seleccionado
+        if node is None or node.data is None:
+            self.notify("No hay ningún archivo seleccionado.", severity="warning")
+            return
+
+        current_path: Path = node.data.path
+
+        # 2. Callback que se ejecuta cuando el usuario escribe el destino en el Modal
+        def on_modal_close(destination_input: str | None) -> None:
+            if not destination_input:
+                return  # Si cancela o está vacío, no hace nada
+
+            # Convertimos la entrada del usuario en un objeto Path
+            target_dir = Path(destination_input.strip())
+
+            # Si el usuario da una ruta de carpeta, mantenemos el nombre original del archivo
+            if target_dir.is_dir() or destination_input.endswith("/"):
+                new_path = target_dir / current_path.name
+            else:
+                new_path = target_dir
+
+            try:
+                # Aseguramos que las carpetas del destino existan antes de mover
+                new_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Movemos el archivo o directorio
+                current_path.rename(new_path)
+
+                self.notify(f"Movido con éxito a: {new_path}")
+                tree.reload()  # Refresca el árbol de directorios
+
+            except FileExistsError:  # en caso de que ya exista:
+                self.notify(
+                    "Error: Ya existe un archivo en el destino.", severity="error"
+                )
+            except Exception as e:  # en caso de otro error:
+                self.notify(f"Error al mover: {e}", severity="error")
+
+        # 3. Abrimos el modal. Reutilizamos CreateFolderModal pero podemos cambiar visualmente el placeholder si fuese necesario.
+        self.push_screen(
+            CreateFolderModal("Digite la carpeta destino: "), on_modal_close
+        )
+
     def action_create_folder(self) -> None:  # m -> makedir
         tree = self.query_one(DirectoryTree)  # Ruta de donde se encuentra el .py
 
@@ -111,7 +163,11 @@ class HolaMundo(App):  # iniciamos la app
             except Exception as e:  # Cualquier otro error:
                 self.notify(f"Error al crear carpeta: {e}", severity="error")
 
-        self.push_screen(CreateFolderModal(), on_modal_close)
+        # le mostramos la ventada de input y le damos el mensaje que mostramos:
+        self.push_screen(
+            CreateFolderModal("Nombre de la nueva carpeta: "),
+            on_modal_close,
+        )
 
     def action_rename(self) -> None:  # r -> Rename
         # rutas:
@@ -145,8 +201,8 @@ class HolaMundo(App):  # iniciamos la app
             except Exception as e:  # Cualquier otro error:
                 self.notify(f"Error al crear carpeta: {e}", severity="error")
 
-        # abre la ventana de input:
-        self.push_screen(CreateFolderModal(), on_modal_close)
+        # abre la ventana de input y le damos el mensaje que mostrara:
+        self.push_screen(CreateFolderModal("Digite el nuevo nombre: "), on_modal_close)
 
 
 if __name__ == "__main__":
