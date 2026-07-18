@@ -1,6 +1,7 @@
 # se importan las librerias a usar:
 import os
 from pathlib import Path
+import shutil
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -70,6 +71,7 @@ class Administrador(App):  # iniciamos la app
         Binding(key="n", action="create_folder", description="New Folder"),
         Binding(key="r", action="rename", description="Rename"),
         Binding(key="m", action="move", description="move"),
+        Binding(key="c", action="copy", description="copy"),
     ]
 
     def compose(self) -> ComposeResult:  # lo que se "Imprimira" en la terminal:
@@ -193,6 +195,59 @@ class Administrador(App):  # iniciamos la app
         self.push_screen(
             VentanaNombres("Nombre de la nueva carpeta: "),
             on_modal_close,
+        )
+
+    def action_copy(self) -> None:  # c -> Copiar archivo o carpeta
+        tree = self.query_one(DirectoryTree)
+        node = tree.cursor_node
+
+        # 1. Validación: Verificar si hay algo seleccionado
+        if node is None or node.data is None:
+            self.notify("No hay ningún archivo seleccionado.", severity="warning")
+            return
+
+        current_path: Path = node.data.path
+
+        # 2. Callback cuando el usuario ingresa el destino en el Modal
+        def on_modal_close(destination_input: str | None) -> None:
+            if not destination_input:
+                return  # Si cancela, no hace nada
+
+            target_dir = Path(destination_input.strip())
+
+            # Si el destino es una carpeta existente o termina en "/", mantenemos el nombre original
+            if target_dir.is_dir() or destination_input.endswith("/"):
+                new_path = target_dir / current_path.name
+            else:
+                new_path = target_dir
+
+            try:
+                # Aseguramos que las carpetas del destino existan
+                new_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # 3. Realizar la copia dependiendo de si es archivo o directorio
+                if current_path.is_file():
+                    shutil.copy2(
+                        current_path, new_path
+                    )  # Copia archivo manteniendo metadatos
+                elif current_path.is_dir():
+                    shutil.copytree(
+                        current_path, new_path
+                    )  # Copia carpetas de forma recursiva
+
+                self.notify(f"Copiado con éxito a: {new_path}")
+                tree.reload()  # Refresca el árbol
+
+            except FileExistsError:
+                self.notify(
+                    "Error: Ya existe un elemento en el destino.", severity="error"
+                )
+            except Exception as e:
+                self.notify(f"Error al copiar: {e}", severity="error")
+
+        # 4. Abrimos el modal reutilizando VentanaNombres
+        self.push_screen(
+            VentanaNombres("Digite la carpeta destino del clon: "), on_modal_close
         )
 
     def action_rename(self) -> None:  # r -> Rename
