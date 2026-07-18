@@ -9,7 +9,7 @@ from textual.screen import ModalScreen
 from textual.widgets import DirectoryTree, Footer, Header, Input
 
 
-class CreateFolderModal(ModalScreen[str]):  # ventana que pedira nombres,ect...
+class VentanaNombres(ModalScreen[str]):  # ventana que pedira nombres,ect...
     def __init__(self, placeholder_text: str = "Nombre: ", **kwargs):
         super().__init__(**kwargs)
         self.placeholder_text = placeholder_text
@@ -27,7 +27,7 @@ class CreateFolderModal(ModalScreen[str]):  # ventana que pedira nombres,ect...
             self.dismiss(None)  # cierra ventana y regresa none
 
 
-class HolaMundo(App):  # iniciamos la app
+class Administrador(App):  # iniciamos la app
     BINDINGS = [  # las keys que se usaran, con su definicion:
         Binding(key="q", action="quit", description="Quit the app"),
         Binding(
@@ -130,9 +130,7 @@ class HolaMundo(App):  # iniciamos la app
                 self.notify(f"Error al mover: {e}", severity="error")
 
         # 3. Abrimos el modal. Reutilizamos CreateFolderModal pero podemos cambiar visualmente el placeholder si fuese necesario.
-        self.push_screen(
-            CreateFolderModal("Digite la carpeta destino: "), on_modal_close
-        )
+        self.push_screen(VentanaNombres("Digite la carpeta destino: "), on_modal_close)
 
     def action_create_folder(self) -> None:  # m -> makedir
         tree = self.query_one(DirectoryTree)  # Ruta de donde se encuentra el .py
@@ -165,7 +163,7 @@ class HolaMundo(App):  # iniciamos la app
 
         # le mostramos la ventada de input y le damos el mensaje que mostramos:
         self.push_screen(
-            CreateFolderModal("Nombre de la nueva carpeta: "),
+            VentanaNombres("Nombre de la nueva carpeta: "),
             on_modal_close,
         )
 
@@ -202,9 +200,9 @@ class HolaMundo(App):  # iniciamos la app
                 self.notify(f"Error al crear carpeta: {e}", severity="error")
 
         # abre la ventana de input y le damos el mensaje que mostrara:
-        self.push_screen(CreateFolderModal("Digite el nuevo nombre: "), on_modal_close)
+        self.push_screen(VentanaNombres("Digite el nuevo nombre: "), on_modal_close)
 
 
 if __name__ == "__main__":
-    app = HolaMundo()
+    app = Administrador()
     app.run()
