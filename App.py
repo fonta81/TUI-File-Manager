@@ -6,7 +6,35 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Grid
 from textual.screen import ModalScreen
-from textual.widgets import DirectoryTree, Footer, Header, Input
+from textual.widgets import DirectoryTree, Footer, Header, Input, Label, Static
+
+
+class VentanaAyuda(ModalScreen):  # ventana help
+    # Atajos para cerrar la ayuda rápidamente con Esc, ? o q
+    BINDINGS = [Binding("escape,?,q", "dismiss", "Cerrar Ayuda")]
+
+    def compose(self) -> ComposeResult:  # ayuda:
+        texto_ayuda = (
+            "[bold]Guía de Atajos de Teclado[/]\n\n"
+            "[substantive]Navegación:[/]\n"
+            "  [b]k[/] o [b]↑[/]     - Subir en el árbol\n"
+            "  [b]j[/] o [b]↓[/]     - Bajar en el árbol\n\n"
+            "[substantive]Acciones:[/]\n"
+            "  [b]n[/]         - Crear una nueva carpeta\n"
+            "  [b]r[/]         - Renombrar archivo o carpeta\n"
+            "  [b]m[/]         - Mover archivo o carpeta\n"
+            "  [b]Delete[/]    - Eliminar elemento seleccionado\n\n"
+            "[substantive]General:[/]\n"
+            "  [b]?[/]         - Mostrar/Ocultar esta ayuda\n"
+            "  [b]q[/]         - Salir de la aplicación\n\n"
+            "[dim]Presiona cualquier tecla asignada o ESC para cerrar[/]"
+        )
+
+        yield Grid(
+            Label("AYUDA", id="help_title"),
+            Static(texto_ayuda, id="help_content"),
+            id="help_dialog",
+        )
 
 
 class VentanaNombres(ModalScreen[str]):  # ventana que pedira nombres,ect...
@@ -61,7 +89,7 @@ class Administrador(App):  # iniciamos la app
         tree.action_cursor_up()  # sube el cursor una vez
 
     def action_help(self) -> None:  # ? -> menu de help
-        self.notify("Le da ayuda... se va... epicamente")
+        self.push_screen(VentanaAyuda())
 
     def action_delete(self) -> None:  # Del -> elimina
         tree = self.query_one(DirectoryTree)  # guarda la ruta actual
