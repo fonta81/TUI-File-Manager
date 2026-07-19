@@ -214,7 +214,7 @@ class Administrador(App):  # iniciamos la app
         # 3. Abrimos el modal. Reutilizamos CreateFolderModal pero podemos cambiar visualmente el placeholder si fuese necesario.
         self.push_screen(VentanaNombres("Digite la carpeta destino: "), on_modal_close)
 
-    def action_create_folder(self) -> None:  # m -> makedir
+    def action_create_folder(self) -> None:  # n -> makedir
         tree = self.query_one(DirectoryTree)  # Ruta de donde se encuentra el .py
 
         node = tree.cursor_node  # Ruta del cursor
