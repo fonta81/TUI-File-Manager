@@ -46,6 +46,8 @@ class VentanaAyuda(ModalScreen):  # ventana help
             "  [b]n[/]         - Crear una nueva carpeta\n"
             "  [b]r[/]         - Renombrar archivo o carpeta\n"
             "  [b]m[/]         - Mover archivo o carpeta\n"
+            "  [b]c[/]    - Copiar elemento seleccionado\n\n"
+            "  [b]v[/]    - Ver contenido de un archivo de texto\n\n"
             "  [b]Delete[/]    - Eliminar elemento seleccionado\n\n"
             "[substantive]General:[/]\n"
             "  [b]?[/]         - Mostrar/Ocultar esta ayuda\n"
@@ -94,6 +96,7 @@ class Administrador(App):  # iniciamos la app
         Binding(key="r", action="rename", description="Rename"),
         Binding(key="m", action="move", description="move"),
         Binding(key="c", action="copy", description="copy"),
+        Binding(key="v", action="view", description="View file content"),
     ]
 
     def compose(self) -> ComposeResult:  # lo que se "Imprimira" en la terminal:
@@ -298,6 +301,39 @@ class Administrador(App):  # iniciamos la app
         self.push_screen(
             VentanaNombres("Digite la carpeta destino del clon: "), on_modal_close
         )
+
+    def action_view(self) -> None:  # v -> ver archivo
+        tree = self.query_one(DirectoryTree)  # ver directorio del archivo
+        node = tree.cursor_node  # ver directorio del puntero
+
+        if node is None or node.data is None:  # Si no hay nada seleccionado
+            self.notify("No hay ningun archivo seleccionado", severity="warning")
+            return
+
+        current_path: Path = node.data.path
+
+        if current_path.is_dir():  # si es una carpeta
+            self.notify("No se puede visualisar una carpeta", severity="warning")
+            return
+
+        try:  # abrimos el archivo en read y vemos los primeros 50k de caracteres
+            with open(current_path, "r", encoding="utf-8", errors="replace") as f:
+                contenido = f.read(50_000)
+
+            class VentanaVisualizador(ModalScreen):
+                BINDINGS = [Binding("escape,q,v", "dismiss", "cerrar")]
+
+                def compose(self) -> ComposeResult:
+                    yield Grid(
+                        Label(f"Contenido de: {current_path.name}", id="help_title"),
+                        Static(contenido, id="help_content", expand=True),
+                        id="help_dialog",
+                    )
+
+            self.push_screen(VentanaVisualizador())
+
+        except Exception as e:
+            self.notify(f"No se pudo leer el archivo: {e}", severity="error")
 
     def action_rename(self) -> None:  # r -> Rename
         # rutas:
