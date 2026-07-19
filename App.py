@@ -132,12 +132,13 @@ class Administrador(App):  # iniciamos la app
             if target_path.is_file():  # si es archivo
                 os.remove(target_path)  # Borra el archivo
                 self.notify(f"Archivo eliminado: {target_path.name}")
-                tree.reload()
+                self.refrescar_arbol(tree)
             elif target_path.is_dir():  # si es Carpeta
                 try:
                     os.rmdir(target_path)  # Intenta borrarla si está vacía
                     self.notify(f"Carpeta vacía eliminada: {target_path.name}")
-                    tree.reload()
+                    self.refrescar_arbol(tree)
+
                 except OSError:  # Si la carpeta NO está vacía, saltará este error
                     # Definimos qué hacer cuando el usuario responda al modal
                     def procesar_confirmacion(confirmado: bool | None) -> None:
@@ -149,7 +150,7 @@ class Administrador(App):  # iniciamos la app
                                 self.notify(
                                     f"Carpeta y contenido eliminados: {target_path.name}"
                                 )
-                                tree.reload()
+                                self.refrescar_arbol(tree)
                             except Exception as error_shutil:
                                 self.notify(
                                     f"Error al eliminar contenido: {error_shutil}",
@@ -202,7 +203,7 @@ class Administrador(App):  # iniciamos la app
                 current_path.rename(new_path)
 
                 self.notify(f"Movido con éxito a: {new_path}")
-                tree.reload()  # Refresca el árbol de directorios
+                self.refrescar_arbol(tree)
 
             except FileExistsError:  # en caso de que ya exista:
                 self.notify(
@@ -235,7 +236,7 @@ class Administrador(App):  # iniciamos la app
                 os.makedirs(new_folder_path, exist_ok=False)  # crea la carpeta
                 self.notify(f"Carpeta creada: {folder_name}")  # mensaje
 
-                tree.reload()  # refresca el menu
+                self.refrescar_arbol(tree)
             except FileExistsError:  # si el archivo existe:
                 self.notify(
                     "Error: Ya existe una carpeta con ese nombre.", severity="error"
@@ -288,7 +289,7 @@ class Administrador(App):  # iniciamos la app
                     )  # Copia carpetas de forma recursiva
 
                 self.notify(f"Copiado con éxito a: {new_path}")
-                tree.reload()  # Refresca el árbol
+                self.refrescar_arbol(tree)
 
             except FileExistsError:
                 self.notify(
@@ -357,7 +358,7 @@ class Administrador(App):  # iniciamos la app
             try:  # el codgio que cambia el nombre:
                 current_path.rename(New_path)
                 self.notify("Se renombro correctamente")  # mensaje
-                tree.reload()  # refresca el menu
+                self.refrescar_arbol(tree)
 
             except FileExistsError:  # si el archivo existe:
                 self.notify(
@@ -369,6 +370,13 @@ class Administrador(App):  # iniciamos la app
 
         # abre la ventana de input y le damos el mensaje que mostrara:
         self.push_screen(VentanaNombres("Digite el nuevo nombre: "), on_modal_close)
+
+    def refrescar_arbol(self, tree: DirectoryTree) -> None:  # Fuerza refresco
+        node = tree.cursor_node
+        if node and node.parent:
+            tree.reload_node(node.parent)
+        else:
+            tree.reload()
 
 
 if __name__ == "__main__":
