@@ -42,15 +42,16 @@ class VentanaAyuda(ModalScreen):  # ventana help
             "[substantive]Navegación:[/]\n"
             "  [b]k[/] o [b]↑[/]     - Subir en el árbol\n"
             "  [b]j[/] o [b]↓[/]     - Bajar en el árbol\n\n"
-            "[substantive]Acciones:[/]\n"
+            "[substantive]Acciones:[/]\n\n"
             "  [b]n[/]         - Crear una nueva carpeta\n"
             "  [b]r[/]         - Renombrar archivo o carpeta\n"
             "  [b]m[/]         - Mover archivo o carpeta\n"
-            "  [b]c[/]    - Copiar elemento seleccionado\n\n"
-            "  [b]v[/]    - Ver contenido de un archivo de texto\n\n"
+            "  [b]c[/]    - Copiar elemento seleccionado\n"
+            "  [b]v[/]    - Ver contenido de un archivo de texto\n"
             "  [b]Delete[/]    - Eliminar elemento seleccionado\n\n"
             "[substantive]General:[/]\n"
             "  [b]?[/]         - Mostrar/Ocultar esta ayuda\n"
+            "  [b]F5[/]         - Refresca el arbol de archivos\n"
             "  [b]q[/]         - Salir de la aplicación\n\n"
             "[dim]Presiona cualquier tecla asignada o ESC para cerrar[/]"
         )
@@ -97,6 +98,7 @@ class Administrador(App):  # iniciamos la app
         Binding(key="m", action="move", description="move"),
         Binding(key="c", action="copy", description="copy"),
         Binding(key="v", action="view", description="View file content"),
+        Binding(key="f5", action="refresh", description="Refresh Tree"),
     ]
 
     def compose(self) -> ComposeResult:  # lo que se "Imprimira" en la terminal:
@@ -370,6 +372,11 @@ class Administrador(App):  # iniciamos la app
 
         # abre la ventana de input y le damos el mensaje que mostrara:
         self.push_screen(VentanaNombres("Digite el nuevo nombre: "), on_modal_close)
+
+    def action_refresh(self) -> None:  # F5 -> refresca el arbol
+        tree = self.query_one(DirectoryTree)
+        self.refrescar_arbol(tree)
+        self.notify("Arbol de archivos actualizado")
 
     def refrescar_arbol(self, tree: DirectoryTree) -> None:  # Fuerza refresco
         node = tree.cursor_node
