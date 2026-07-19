@@ -58,3 +58,6 @@ The file consists of:
 - `VentanaAyuda`: Modal menu detailing keyboard actions.
 - `VentanaNombres`: Dynamic input modal for paths and text collection.
 - `VentanaConfirmacion`: Protection modal ensuring you do not accidentally remove non-empty folders without entering confirmation (`S` or `si`).
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
