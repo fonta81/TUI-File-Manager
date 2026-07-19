@@ -1,43 +1,60 @@
-# TUI File Manager
+# Terminal File Manager (Administrador)
 
-A lightweight, keyboard-driven Terminal User Interface (TUI) File Manager built with Python and [Textual](https://textual.textualize.io/). It allows you to navigate your directories and manage files directly from your terminal using modern modal popups and responsive shortcuts.
+A lightweight, efficient, and interactive Terminal User Interface (TUI) file manager written in Python using the **Textual** framework. It allows you to quickly navigate your directory structure and perform essential file system operations completely within your terminal using keyboard shortcuts.
 
 ## Features
 
-* **Interactive Directory Tree:** Browse folders and files dynamically with native auto-refresh.
-* **Keyboard-Driven Workflow:** Quick operations using intuitive Vim-like and semantic shortcuts.
-* **Smart Modals:** Built-in confirmation dialogs to prevent accidental loss when deleting non-empty directories.
-* **Complete File Management:** Seamlessly create, delete, rename, move, and copy files or directories.
-* **Contextual Notifications:** Real-time feedback for operations, warning popups, and error messages.
+- **Directory Tree Navigation:** Seamlessly browse your files and folders.
+- **File & Folder Operations:**
+  - **Create Folders (`n`):** Create new subdirectories in the currently selected path.
+  - **Rename (`r`):** Instantly rename files or folders.
+  - **Move (`m`):** Move items securely to a specified target directory.
+  - **Copy (`c`):** Recursively copy directories or duplicate single files safely.
+  - **Delete (`Delete`):** Remove files directly or safely delete folders (with interactive confirmation dialogs for non-empty folders).
+- **File Viewer (`v`):** View the first 50,000 characters of text-based files instantly in an overlaid modal without leaving the app.
+- **Interactive Modals:** Beautifully centered dialog prompts for confirmations, names, and errors.
+- **Built-in Help Overlay (`?`):** Access the quick-reference keyboard guide anytime.
 
 ---
 
-## Key Bindings & Shortcuts
+## Keyboard Shortcuts
 
-Press `?` inside the application at any time to open the built-in Help Screen.
-
-### Navigation
-* `k` or `↑`: Scroll cursor up
-* `j` or `↓`: Scroll cursor down
-
-### File Operations
-* `n`: Create a new folder
-* `r`: Rename selected item
-* `m`: Move file or folder to a target destination
-* `c`: Copy (clone) file or folder recursively
-* `Delete`: Delete selected file/folder (prompts for safety if a folder contains data)
-
-### General
-* `?`: Toggle help screen
-* `q`: Quit the application
-* `ESC`: Close active help or dialog windows
+| Key | Action | Description |
+| :---: | :--- | :--- |
+| `k` / `↑` | **Scroll Up** | Move the cursor up the directory tree |
+| `j` / `↓` | **Scroll Down** | Move the cursor down the directory tree |
+| `n` | **New Folder** | Create a new folder at the current location |
+| `r` | **Rename** | Rename the selected file or folder |
+| `m` | **Move** | Move the selected item to a target path |
+| `c` | **Copy** | Copy the selected item to a target path |
+| `v` | **View** | Preview text file contents in a modal |
+| `Delete` | **Delete** | Delete the selected file or directory |
+| `?` | **Help** | Toggle the help screen guide |
+| `q` | **Quit** | Exit the application |
 
 ---
 
-## Installation & Setup
+## Prerequisites
 
-1. **Prerequisites:** Ensure you have Python 3.8+ installed on your system.
-2. **Install Dependencies:** This project relies on `textual`. Install it via pip:
+Make sure you have Python 3.8+ and the `textual` package installed.
 
 ```bash
 pip install textual
+```
+
+## Running the Application
+
+1. Save the code into a file named `App.py`.
+2. Launch it from your terminal:
+
+```bash
+python App.py
+```
+
+## Structure
+
+The file consists of:
+- `Administrador`: The core application class managing state, layouts, key bindings, and main file actions.
+- `VentanaAyuda`: Modal menu detailing keyboard actions.
+- `VentanaNombres`: Dynamic input modal for paths and text collection.
+- `VentanaConfirmacion`: Protection modal ensuring you do not accidentally remove non-empty folders without entering confirmation (`S` or `si`).
