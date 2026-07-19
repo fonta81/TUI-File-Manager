@@ -10,6 +10,28 @@ from textual.screen import ModalScreen
 from textual.widgets import DirectoryTree, Footer, Header, Input, Label, Static
 
 
+class VentanaConfirmacion(ModalScreen[bool]):  # Retorna True o False
+    def __init__(self, mensaje: str, **kwargs):
+        super().__init__(**kwargs)
+        self.mensaje = mensaje
+
+    def compose(self) -> ComposeResult:  # mostramos el mensaje:
+        texto_instrucciones = f"{self.mensaje}\n\n[dim]Escribe [b]S[/b] para confirmar o cualquier otra cosa para cancelar.[/]"
+        yield Grid(
+            Label("CONFIRMACIÓN", id="modal_title"),
+            Input(placeholder="¿Confirmar? (S/N): ", id="confirm_input"),
+            Static(texto_instrucciones, id="modal_content"),
+            id="modal_dialog",
+        )
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        # Si el usuario escribe 's' o 'si', confirmamos (True)
+        if event.value.strip().lower() in ["s", "si"]:
+            self.dismiss(True)
+        else:
+            self.dismiss(False)
+
+
 class VentanaAyuda(ModalScreen):  # ventana help
     # Atajos para cerrar la ayuda rápidamente con Esc, ? o q
     BINDINGS = [Binding("escape,?,q", "dismiss", "Cerrar Ayuda")]
@@ -95,7 +117,6 @@ class Administrador(App):  # iniciamos la app
 
     def action_delete(self) -> None:  # Del -> elimina
         tree = self.query_one(DirectoryTree)  # guarda la ruta actual
-
         node = tree.cursor_node  # guarda la ruta del cursor
 
         if node is None or node.data is None:  # no hay nada -> se sale de la funcion
@@ -108,13 +129,41 @@ class Administrador(App):  # iniciamos la app
             if target_path.is_file():  # si es archivo
                 os.remove(target_path)  # Borra el archivo
                 self.notify(f"Archivo eliminado: {target_path.name}")
+                tree.reload()
             elif target_path.is_dir():  # si es Carpeta
-                os.rmdir(target_path)  # Borra la Carpeta
-                self.notify(f"Carpeta eliminada: {target_path.name}")
+                try:
+                    os.rmdir(target_path)  # Intenta borrarla si está vacía
+                    self.notify(f"Carpeta vacía eliminada: {target_path.name}")
+                    tree.reload()
+                except OSError:  # Si la carpeta NO está vacía, saltará este error
+                    # Definimos qué hacer cuando el usuario responda al modal
+                    def procesar_confirmacion(confirmado: bool | None) -> None:
+                        if confirmado:
+                            try:
+                                shutil.rmtree(
+                                    target_path
+                                )  # Borra la carpeta y TODO su contenido
+                                self.notify(
+                                    f"Carpeta y contenido eliminados: {target_path.name}"
+                                )
+                                tree.reload()
+                            except Exception as error_shutil:
+                                self.notify(
+                                    f"Error al eliminar contenido: {error_shutil}",
+                                    severity="error",
+                                )
+                        else:
+                            self.notify("Eliminación cancelada.")
 
-            tree.reload()  # refresca el menu
+                    # Lanzamos el modal de confirmación pasándole la función callback
+                    self.push_screen(
+                        VentanaConfirmacion(
+                            f"La carpeta '{target_path.name}' contiene información."
+                        ),
+                        procesar_confirmacion,
+                    )
 
-        except Exception as e:  # en caso de error:
+        except Exception as e:  # en caso de otro tipo de error:
             self.notify(f"Error al eliminar: {e}", severity="error")
 
     def action_move(self) -> None:  # m -> Mover archivo o carpeta
