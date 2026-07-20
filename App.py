@@ -100,6 +100,7 @@ class Administrador(App):  # iniciamos la app
         Binding(key="v", action="view", description="View file content"),
         Binding(key="f5", action="refresh", description="Refresh Tree"),
     ]
+    CSS_PATH = "styles.tcss"
 
     def compose(self) -> ComposeResult:  # lo que se "Imprimira" en la terminal:
         yield DirectoryTree("./")
