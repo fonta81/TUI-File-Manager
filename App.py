@@ -44,14 +44,15 @@ class VentanaAyuda(ModalScreen):  # ventana help
             "  [b]j[/] o [b]↓[/]     - Bajar en el árbol\n\n"
             "[substantive]Acciones:[/]\n\n"
             "  [b]n[/]         - Crear una nueva carpeta\n"
+            "  [b]N[/]         - Crear un archivo\n"
             "  [b]r[/]         - Renombrar archivo o carpeta\n"
             "  [b]m[/]         - Mover archivo o carpeta\n"
-            "  [b]c[/]    - Copiar elemento seleccionado\n"
-            "  [b]v[/]    - Ver contenido de un archivo de texto\n"
+            "  [b]c[/]         - Copiar elemento seleccionado\n"
+            "  [b]v[/]         - Ver contenido de un archivo de texto\n"
             "  [b]Delete[/]    - Eliminar elemento seleccionado\n\n"
             "[substantive]General:[/]\n"
             "  [b]?[/]         - Mostrar/Ocultar esta ayuda\n"
-            "  [b]F5[/]         - Refresca el arbol de archivos\n"
+            "  [b]F5[/]        - Refresca el arbol de archivos\n"
             "  [b]q[/]         - Salir de la aplicación\n\n"
             "[dim]Presiona cualquier tecla asignada o ESC para cerrar[/]"
         )
@@ -94,6 +95,7 @@ class Administrador(App):  # iniciamos la app
         Binding(key="j", action="down", description="Scroll down", show=False),
         Binding(key="k", action="upp", description="Scroll up", show=False),
         Binding(key="n", action="create_folder", description="New Folder"),
+        Binding(key="N", action="create_file", description="New File"),
         Binding(key="r", action="rename", description="Rename"),
         Binding(key="m", action="move", description="move"),
         Binding(key="c", action="copy", description="copy"),
@@ -250,6 +252,42 @@ class Administrador(App):  # iniciamos la app
         # le mostramos la ventada de input y le damos el mensaje que mostramos:
         self.push_screen(
             VentanaNombres("Nombre de la nueva carpeta: "),
+            on_modal_close,
+        )
+
+    def action_create_file(self) -> None:  # N -> new file
+        tree = self.query_one(DirectoryTree)  # Ruta de donde se encuentra el .py
+        node = tree.cursor_node  # Ruta del cursor
+
+        if node is not None and node.data is not None:  # Hay algo seleccionado?:
+            current_path: Path = node.data.path  # guarda el path
+            # El path es de un archivo o de una capreta:
+            base_dir = current_path.parent if current_path.is_file() else current_path
+        else:  # seleccion == none -> creara el archivo en la raiz:
+            base_dir = Path("./")
+
+        def on_modal_close(File_name: str | None) -> None:
+            if not File_name:  # si no dijito el nombre:
+                return  # salir
+
+            new_file_path = base_dir / File_name  # crea la ruta del archivo nuevo
+
+            try:
+                with open(new_file_path, "w", encoding="utf-8"):  # crea el archivo
+                    pass
+                self.notify(f"Archivo creada: {File_name}")  # mensaje
+
+                self.refrescar_arbol(tree)
+            except FileExistsError:  # si el archivo existe:
+                self.notify(
+                    "Error: Ya existe un archivo con ese nombre.", severity="error"
+                )
+            except Exception as e:  # Cualquier otro error:
+                self.notify(f"Error al crear archivo: {e}", severity="error")
+
+        # le mostramos la ventada de input y le damos el mensaje que mostramos:
+        self.push_screen(
+            VentanaNombres("Nombre del nuevo archivo con su extension: "),
             on_modal_close,
         )
 
