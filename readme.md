@@ -1,63 +1,63 @@
-# Terminal File Manager (Administrador)
+# Textual Terminal File Manager
 
-A lightweight, efficient, and interactive Terminal User Interface (TUI) file manager written in Python using the **Textual** framework. It allows you to quickly navigate your directory structure and perform essential file system operations completely within your terminal using keyboard shortcuts.
+A lightweight, keyboard-driven Terminal User Interface (TUI) file manager built in Python using the [Textual](https://textual.textualize.io/) framework.
+
+---
 
 ## Features
 
-- **Directory Tree Navigation:** Seamlessly browse your files and folders.
-- **File & Folder Operations:**
-  - **Create Folders (`n`):** Create new subdirectories in the currently selected path.
-  - **Rename (`r`):** Instantly rename files or folders.
-  - **Move (`m`):** Move items securely to a specified target directory.
-  - **Copy (`c`):** Recursively copy directories or duplicate single files safely.
-  - **Delete (`Delete`):** Remove files directly or safely delete folders (with interactive confirmation dialogs for non-empty folders).
-- **File Viewer (`v`):** View the first 50,000 characters of text-based files instantly in an overlaid modal without leaving the app.
-- **Interactive Modals:** Beautifully centered dialog prompts for confirmations, names, and errors.
-- **Built-in Help Overlay (`?`):** Access the quick-reference keyboard guide anytime.
+- **Interactive Directory Tree:** Easily navigate your file system with quick keyboard shortcuts.
+- **File & Directory Management:** Create, rename, move, copy, and delete files or folders directly from the terminal.
+- **Safe Directory Deletion:** Prompts a confirmation modal before recursively deleting non-empty folders.
+- **Quick File Preview:** Read text file contents up to 50,000 characters in a popup viewer.
+- **Built-in Help System:** View available keybindings anytime by pressing `?`.
 
 ---
 
-## Keyboard Shortcuts
+## Requirements
 
-| Key | Action | Description |
-| :---: | :--- | :--- |
-| `k` / `↑` | **Scroll Up** | Move the cursor up the directory tree |
-| `j` / `↓` | **Scroll Down** | Move the cursor down the directory tree |
-| `n` | **New Folder** | Create a new folder at the current location |
-| `r` | **Rename** | Rename the selected file or folder |
-| `m` | **Move** | Move the selected item to a target path |
-| `c` | **Copy** | Copy the selected item to a target path |
-| `v` | **View** | Preview text file contents in a modal |
-| `Delete` | **Delete** | Delete the selected file or directory |
-| `?` | **Help** | Toggle the help screen guide |
-| `q` | **Quit** | Exit the application |
+- Python 3.8+
+- [Textual](https://pypi.org/project/textual/) library
 
 ---
 
-## Prerequisites
+## Installation
 
-Make sure you have Python 3.8+ and the `textual` package installed.
+1. **Clone or download** this repository.
+2. **Install dependencies:**
+   ```bash
+   pip install textual
+   ```
 
-```bash
-pip install textual
-```
+---
 
-## Running the Application
+## Usage
 
-1. Save the code into a file named `App.py`.
-2. Launch it from your terminal:
+Run the main application file from your terminal:
 
 ```bash
 python App.py
 ```
 
-## Structure
+> **Note:** The application looks for a custom stylesheet named `styles.tcss` in the same directory for custom styling (modals, dialogs, colors).
 
-The file consists of:
-- `Administrador`: The core application class managing state, layouts, key bindings, and main file actions.
-- `VentanaAyuda`: Modal menu detailing keyboard actions.
-- `VentanaNombres`: Dynamic input modal for paths and text collection.
-- `VentanaConfirmacion`: Protection modal ensuring you do not accidentally remove non-empty folders without entering confirmation (`S` or `si`).
-## License
+---
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Keybindings & Navigation
+
+| Key | Action | Description |
+| :--- | :--- | :--- |
+| `k` / `↑` | Scroll Up | Move cursor up in the directory tree |
+| `j` / `↓` | Scroll Down | Move cursor down in the directory tree |
+| `n` | New Folder | Create a new directory |
+| `N` | New File | Create a new file (including extension) |
+| `r` | Rename | Rename selected file or folder |
+| `m` | Move | Move selected item to a target path |
+| `c` | Copy | Copy selected file/folder to a destination |
+| `v` | View | Preview text content of the selected file |
+| `Delete` | Delete | Delete selected file or directory |
+| `F5` | Refresh | Reload file tree |
+| `?` | Help | Open help menu |
+| `q` | Quit | Exit the application |
+
+- This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
