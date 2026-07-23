@@ -2,13 +2,16 @@
 import os
 import shutil
 import subprocess
+import sys
+from datetime import datetime
 from pathlib import Path
+from zipfile import ZipFile
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Grid, Horizontal, Vertical
+from textual.containers import Grid
 from textual.screen import ModalScreen
-from textual.widgets import DirectoryTree, Footer, Header, Input, Label, Static, Button
+from textual.widgets import DirectoryTree, Footer, Header, Input, Label, Static
 
 
 class VentanaConfirmacion(ModalScreen[bool]):  # Retorna True o False
@@ -23,7 +26,6 @@ class VentanaConfirmacion(ModalScreen[bool]):  # Retorna True o False
         )
         yield Grid(
             Label("CONFIRMACIÓN", id="modal_title"),
-            Input(placeholder="¿Confirmar? (S/N): ", id="confirm_input"),
             Static(texto_instrucciones, id="modal_content"),
             id="modal_dialog",
         )
@@ -33,13 +35,6 @@ class VentanaConfirmacion(ModalScreen[bool]):  # Retorna True o False
         if key == "s":  # Si presiona S -> confirma
             self.dismiss(True)
         elif key in ("n", "escape"):  # Si presiona N o Esc -> cancela
-            self.dismiss(False)
-
-    def on_input_submitted(self, event: Input.Submitted) -> None:
-        # Si el usuario escribe 's' o 'si', confirmamos (True)
-        if event.value.strip().lower() in ["s", "si"]:
-            self.dismiss(True)
-        else:
             self.dismiss(False)
 
 
@@ -52,9 +47,7 @@ class VentanaAyuda(ModalScreen):  # ventana help
             "[bold]Guía de Atajos de Teclado[/]\n\n"
             "[substantive]Navegación:[/]\n"
             "  [b]k[/] o [b]↑[/]     - Subir en el árbol\n"
-            "  [b]j[/] o [b]↓[/]     - Bajar en el árbol\n"
-            "  [b]h[/] o [b]←[/]     - Colapsar carpeta\n"
-            "  [b]l[/] o [b]→[/]     - Expandir carpeta\n\n"
+            "  [b]j[/] o [b]↓[/]     - Bajar en el árbol\n\n"
             "[substantive]Acciones:[/]\n\n"
             "  [b]n[/]         - Crear una nueva carpeta\n"
             "  [b]N[/]         - Crear un archivo\n"
@@ -167,8 +160,6 @@ class VentanaPropiedades(ModalScreen):  # ventana para ver info detallada del ar
         return f"{size:.2f} PB"
 
     def _format_time(self, timestamp: float) -> str:  # formatea fecha
-        from datetime import datetime
-
         return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
 
@@ -184,8 +175,6 @@ class Administrador(App):  # iniciamos la app
         Binding(key="delete", action="delete", description="Delete the thing"),
         Binding(key="j", action="down", description="Scroll down", show=False),
         Binding(key="k", action="up", description="Scroll up", show=False),
-        Binding(key="h", action="collapse", description="Collapse folder", show=False),
-        Binding(key="l", action="expand", description="Expand folder", show=False),
         Binding(key="n", action="create_folder", description="New Folder"),
         Binding(key="N", action="create_file", description="New File"),
         Binding(key="r", action="rename", description="Rename"),
@@ -225,18 +214,6 @@ class Administrador(App):  # iniciamos la app
         if self._tree:  # si el arbol existe
             self._tree.action_cursor_up()  # sube el cursor una vez
 
-    def action_collapse(self) -> None:  # h -> colapsa carpeta
-        if self._tree:
-            node = self._tree.cursor_node
-            if node and node.data and node.data.path.is_dir():
-                self._tree.action_collapse()  # colapsa el nodo actual
-
-    def action_expand(self) -> None:  # l -> expande carpeta
-        if self._tree:
-            node = self._tree.cursor_node
-            if node and node.data and node.data.path.is_dir():
-                self._tree.action_expand()  # expande el nodo actual
-
     def action_help(self) -> None:  # ? -> menu de help
         self.push_screen(VentanaAyuda())
 
@@ -270,6 +247,17 @@ class Administrador(App):  # iniciamos la app
             path = Path.home() / str(path)[1:].lstrip("/\\")
         return path.resolve()  # convierte a ruta absoluta
 
+    def _sanitize_name(self, name: str) -> str:
+        """Sanitiza nombres de archivo para prevenir path traversal."""
+        # Elimina caracteres de path y normaliza
+        name = name.replace("\\", "").replace("/", "").replace("..", "")
+        # Elimina caracteres nulos y de control
+        name = "".join(c for c in name if c.isprintable() and c != "\x00")
+        name = name.strip()
+        if not name or name in (".", ".."):
+            raise ValueError("Nombre inválido")
+        return name
+
     def _refrescar_arbol(self) -> None:  # Fuerza refresco
         if not self._tree:  # si no hay arbol, no hace nada
             return
@@ -289,6 +277,20 @@ class Administrador(App):  # iniciamos la app
             self.notify(f"Error: {e.stderr or e}", severity="error")
         except FileNotFoundError:
             self.notify("Comando no encontrado. ¿Está instalado?", severity="error")
+        except Exception as e:
+            self.notify(f"Error: {e}", severity="error")
+
+    def _run_command_nonblocking(self, cmd: list[str], success_msg: str) -> None:
+        """Ejecuta un comando sin bloquear el event loop de Textual."""
+        try:
+            # Usamos Popen para no bloquear, y un worker para monitorear
+            import asyncio
+
+            proc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            # Notificamos inmediatamente ya que el editor se abrió
+            self.notify(success_msg)
         except Exception as e:
             self.notify(f"Error: {e}", severity="error")
 
@@ -373,6 +375,16 @@ class Administrador(App):  # iniciamos la app
                 )
                 return
 
+            # Validación de seguridad: prevenir salir del árbol de trabajo
+            try:
+                new_path.relative_to(Path(".").resolve())
+            except ValueError:
+                self.notify(
+                    "No se permite mover fuera del directorio de trabajo.",
+                    severity="error",
+                )
+                return
+
             try:
                 # Aseguramos que las carpetas del destino existan antes de mover
                 new_path.parent.mkdir(parents=True, exist_ok=True)
@@ -403,11 +415,17 @@ class Administrador(App):  # iniciamos la app
             if not folder_name:  # si no escribio el nombre:
                 return  # salir
 
-            new_folder_path = base_dir / folder_name  # crea la ruta de la carpeta nueva
+            try:
+                safe_name = self._sanitize_name(folder_name)
+            except ValueError:
+                self.notify("Nombre de carpeta inválido.", severity="error")
+                return
+
+            new_folder_path = base_dir / safe_name  # crea la ruta de la carpeta nueva
 
             try:
                 os.makedirs(new_folder_path, exist_ok=False)  # crea la carpeta
-                self.notify(f"Carpeta creada: {folder_name}")  # mensaje
+                self.notify(f"Carpeta creada: {safe_name}")  # mensaje
 
                 self._refrescar_arbol()
             except FileExistsError:  # si el archivo existe:
@@ -430,13 +448,19 @@ class Administrador(App):  # iniciamos la app
             if not file_name:  # si no escribio el nombre:
                 return  # salir
 
-            new_file_path = base_dir / file_name  # crea la ruta del archivo nuevo
+            try:
+                safe_name = self._sanitize_name(file_name)
+            except ValueError:
+                self.notify("Nombre de archivo inválido.", severity="error")
+                return
+
+            new_file_path = base_dir / safe_name  # crea la ruta del archivo nuevo
 
             try:
                 # Crea carpetas intermedias si no existen
                 new_file_path.parent.mkdir(parents=True, exist_ok=True)
                 new_file_path.touch(exist_ok=False)  # crea el archivo
-                self.notify(f"Archivo creado: {file_name}")  # mensaje
+                self.notify(f"Archivo creado: {safe_name}")  # mensaje
 
                 self._refrescar_arbol()
             except FileExistsError:  # si el archivo existe:
@@ -477,6 +501,16 @@ class Administrador(App):  # iniciamos la app
             if new_path.resolve() == current_path.resolve():
                 self.notify(
                     "No se puede copiar un archivo sobre sí mismo.", severity="error"
+                )
+                return
+
+            # Validación de seguridad
+            try:
+                new_path.relative_to(Path(".").resolve())
+            except ValueError:
+                self.notify(
+                    "No se permite copiar fuera del directorio de trabajo.",
+                    severity="error",
                 )
                 return
 
@@ -562,9 +596,13 @@ class Administrador(App):  # iniciamos la app
             if not new_name:  # en caso de que este vacio
                 return  # salir
 
-            # CORRECCION: Usamos with_name() para reemplazar el nombre COMPLETO
-            # (with_stem solo cambia el nombre sin extension, rompiendo archivos con extension)
-            new_path = current_path.with_name(new_name)
+            try:
+                safe_name = self._sanitize_name(new_name)
+            except ValueError:
+                self.notify("Nombre inválido.", severity="error")
+                return
+
+            new_path = current_path.with_name(safe_name)
 
             # Validacion: no renombrar si ya existe otro con ese nombre
             if new_path.exists() and new_path.resolve() != current_path.resolve():
@@ -576,7 +614,7 @@ class Administrador(App):  # iniciamos la app
 
             try:  # el codigo que cambia el nombre:
                 current_path.rename(new_path)
-                self.notify(f"Renombrado a: {new_name}")  # mensaje
+                self.notify(f"Renombrado a: {safe_name}")  # mensaje
                 self._refrescar_arbol()
 
             except FileExistsError:  # si el archivo existe:
@@ -611,8 +649,21 @@ class Administrador(App):  # iniciamos la app
         # Obtenemos el editor del sistema (vi, nano, code, etc.)
         editor = os.environ.get("EDITOR", "vi")  # por defecto vi si no hay $EDITOR
 
-        # Abrimos el archivo en el editor externo
-        self._run_command([editor, str(current_path)], f"Archivo abierto en {editor}")
+        # Determinamos si es un editor de terminal o GUI
+        terminal_editors = {"vi", "vim", "nvim", "nano", "emacs", "micro", "joe"}
+        editor_name = os.path.basename(editor).lower()
+
+        if editor_name in terminal_editors:
+            # Para editores de terminal, usamos run que bloquea pero es correcto
+            # porque textual suspenderá la UI
+            self._run_command(
+                [editor, str(current_path)], f"Archivo abierto en {editor}"
+            )
+        else:
+            # Para editores GUI, no bloqueamos
+            self._run_command_nonblocking(
+                [editor, str(current_path)], f"Archivo abierto en {editor}"
+            )
 
     def action_open_external(self) -> None:  # o -> Abrir con app predeterminada
         current_path = self._get_selected_path()  # ve que hay seleccionado
@@ -622,18 +673,18 @@ class Administrador(App):  # iniciamos la app
             return
 
         # Usamos xdg-open (Linux) o open (macOS) para abrir con la app por defecto
-        import sys
-
         if sys.platform == "darwin":  # macOS
             cmd = ["open", str(current_path)]
+            self._run_command_nonblocking(cmd, f"Abierto: {current_path.name}")
         elif sys.platform == "win32":  # Windows
-            os.startfile(str(current_path))  # Windows tiene su propia funcion
-            self.notify(f"Abierto: {current_path.name}")
-            return
+            try:
+                os.startfile(str(current_path))  # Windows tiene su propia funcion
+                self.notify(f"Abierto: {current_path.name}")
+            except OSError as e:
+                self.notify(f"No se pudo abrir: {e}", severity="error")
         else:  # Linux y otros
             cmd = ["xdg-open", str(current_path)]
-
-        self._run_command(cmd, f"Abierto: {current_path.name}")
+            self._run_command_nonblocking(cmd, f"Abierto: {current_path.name}")
 
     def action_properties(self) -> None:  # p -> Ver propiedades del archivo
         current_path = self._get_selected_path()  # ve que hay seleccionado
@@ -664,15 +715,14 @@ class Administrador(App):  # iniciamos la app
             counter += 1
 
         try:
-            import zipfile
-
-            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            with ZipFile(zip_path, "w") as zf:
                 if current_path.is_file():  # si es archivo
                     zf.write(current_path, current_path.name)
                 else:  # si es carpeta, comprimimos todo recursivamente
                     for file_path in current_path.rglob("*"):
                         if file_path.is_file():
-                            arcname = file_path.relative_to(current_path.parent)
+                            # FIX: Usamos relative_to(current_path) en lugar de current_path.parent
+                            arcname = file_path.relative_to(current_path)
                             zf.write(file_path, arcname)
 
             self.notify(f"Comprimido: {zip_name}")
@@ -688,7 +738,7 @@ class Administrador(App):  # iniciamos la app
             self.notify("No hay ningún archivo seleccionado.", severity="warning")
             return
 
-        if not current_path.suffix.lower() == ".zip":  # si no es zip
+        if current_path.suffix.lower() != ".zip":  # si no es zip
             self.notify("El archivo seleccionado no es un .zip", severity="warning")
             return
 
@@ -703,9 +753,17 @@ class Administrador(App):  # iniciamos la app
             counter += 1
 
         try:
-            import zipfile
+            with ZipFile(current_path, "r") as zf:
+                # FIX: Validación de seguridad contra path traversal en zips
+                for member in zf.namelist():
+                    member_path = extract_dir / member
+                    try:
+                        member_path.relative_to(extract_dir.resolve())
+                    except ValueError:
+                        raise ValueError(
+                            f"Archivo malicioso en zip detectado: {member}"
+                        )
 
-            with zipfile.ZipFile(current_path, "r") as zf:
                 zf.extractall(extract_dir)
 
             self.notify(f"Extraído en: {extract_dir.name}")
@@ -725,8 +783,6 @@ class Administrador(App):  # iniciamos la app
 
         try:
             # Intentamos usar xclip (Linux), pbcopy (macOS) o clip (Windows)
-            import sys
-
             if sys.platform == "darwin":  # macOS
                 subprocess.run(["pbcopy"], input=ruta, text=True, check=True)
             elif sys.platform == "win32":  # Windows
@@ -787,8 +843,6 @@ class Administrador(App):  # iniciamos la app
 
     def action_touch_timestamp(self) -> None:  # t -> Crear archivo con timestamp
         base_dir = self._get_base_dir()  # ve en que carpeta crear
-
-        from datetime import datetime
 
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")  # fecha y hora actual
         file_name = f"archivo_{timestamp}.txt"  # nombre con timestamp
