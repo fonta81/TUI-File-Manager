@@ -1,13 +1,14 @@
 # se importan las librerias a usar:
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Grid
+from textual.containers import Grid, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import DirectoryTree, Footer, Header, Input, Label, Static
+from textual.widgets import DirectoryTree, Footer, Header, Input, Label, Static, Button
 
 
 class VentanaConfirmacion(ModalScreen[bool]):  # Retorna True o False
@@ -51,7 +52,9 @@ class VentanaAyuda(ModalScreen):  # ventana help
             "[bold]Guía de Atajos de Teclado[/]\n\n"
             "[substantive]Navegación:[/]\n"
             "  [b]k[/] o [b]↑[/]     - Subir en el árbol\n"
-            "  [b]j[/] o [b]↓[/]     - Bajar en el árbol\n\n"
+            "  [b]j[/] o [b]↓[/]     - Bajar en el árbol\n"
+            "  [b]h[/] o [b]←[/]     - Colapsar carpeta\n"
+            "  [b]l[/] o [b]→[/]     - Expandir carpeta\n\n"
             "[substantive]Acciones:[/]\n\n"
             "  [b]n[/]         - Crear una nueva carpeta\n"
             "  [b]N[/]         - Crear un archivo\n"
@@ -59,6 +62,14 @@ class VentanaAyuda(ModalScreen):  # ventana help
             "  [b]m[/]         - Mover archivo o carpeta\n"
             "  [b]c[/]         - Copiar elemento seleccionado\n"
             "  [b]v[/]         - Ver contenido de un archivo de texto\n"
+            "  [b]e[/]         - Editar archivo con editor externo ($EDITOR)\n"
+            "  [b]o[/]         - Abrir archivo con app predeterminada (xdg-open)\n"
+            "  [b]p[/]         - Ver propiedades del archivo (tamaño, permisos)\n"
+            "  [b]z[/]         - Comprimir a .zip\n"
+            "  [b]Z[/]         - Descomprimir .zip\n"
+            "  [b]y[/]         - Copiar ruta al portapapeles\n"
+            "  [b]d[/]         - Duplicar archivo/carpeta\n"
+            "  [b]t[/]         - Crear archivo vacío con timestamp\n"
             "  [b]Delete[/]    - Eliminar elemento seleccionado\n\n"
             "[substantive]General:[/]\n"
             "  [b]?[/]         - Mostrar/Ocultar esta ayuda\n"
@@ -109,6 +120,58 @@ class VentanaVisualizador(ModalScreen):  # ventana para ver contenido de archivo
         )
 
 
+class VentanaPropiedades(ModalScreen):  # ventana para ver info detallada del archivo
+    # Atajos para cerrar
+    BINDINGS = [Binding("escape,q,p", "dismiss", "Cerrar")]
+
+    def __init__(self, file_path: Path, **kwargs):
+        super().__init__(**kwargs)
+        self.file_path = file_path
+
+    def compose(self) -> ComposeResult:
+        # Obtenemos toda la info del archivo:
+        try:
+            stat = self.file_path.stat()
+            size = stat.st_size
+            size_str = self._format_size(size)
+            perms = oct(stat.st_mode)[-3:]  # permisos en octal (ej: 644)
+            modified = self._format_time(stat.st_mtime)
+            created = self._format_time(stat.st_ctime)
+            tipo = "Carpeta" if self.file_path.is_dir() else "Archivo"
+            extension = self.file_path.suffix if self.file_path.suffix else "Ninguna"
+
+            info = (
+                f"[bold]Propiedades de:[/] {self.file_path.name}\n\n"
+                f"[substantive]Ruta completa:[/] {self.file_path.resolve()}\n"
+                f"[substantive]Tipo:[/] {tipo}\n"
+                f"[substantive]Tamaño:[/] {size_str} ({size:,} bytes)\n"
+                f"[substantive]Extensión:[/] {extension}\n"
+                f"[substantive]Permisos:[/] {perms}\n"
+                f"[substantive]Modificado:[/] {modified}\n"
+                f"[substantive]Creado:[/] {created}\n"
+            )
+        except Exception as e:
+            info = f"[red]Error al obtener propiedades: {e}[/]"
+
+        yield Grid(
+            Label("PROPIEDADES", id="help_title"),
+            Static(info, id="help_content"),
+            id="help_dialog",
+        )
+
+    def _format_size(self, size: int) -> str:  # convierte bytes a human readable
+        for unit in ["B", "KB", "MB", "GB", "TB"]:
+            if size < 1024:
+                return f"{size:.2f} {unit}"
+            size /= 1024
+        return f"{size:.2f} PB"
+
+    def _format_time(self, timestamp: float) -> str:  # formatea fecha
+        from datetime import datetime
+
+        return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+
+
 class Administrador(App):  # iniciamos la app
     BINDINGS = [  # las keys que se usaran, con su definicion:
         Binding(key="q", action="quit", description="Quit the app"),
@@ -121,12 +184,22 @@ class Administrador(App):  # iniciamos la app
         Binding(key="delete", action="delete", description="Delete the thing"),
         Binding(key="j", action="down", description="Scroll down", show=False),
         Binding(key="k", action="up", description="Scroll up", show=False),
+        Binding(key="h", action="collapse", description="Collapse folder", show=False),
+        Binding(key="l", action="expand", description="Expand folder", show=False),
         Binding(key="n", action="create_folder", description="New Folder"),
         Binding(key="N", action="create_file", description="New File"),
         Binding(key="r", action="rename", description="Rename"),
         Binding(key="m", action="move", description="Move"),
         Binding(key="c", action="copy", description="Copy"),
         Binding(key="v", action="view", description="View file content"),
+        Binding(key="e", action="edit", description="Edit with $EDITOR"),
+        Binding(key="o", action="open_external", description="Open with default app"),
+        Binding(key="p", action="properties", description="Properties"),
+        Binding(key="z", action="zip_compress", description="Compress to zip"),
+        Binding(key="Z", action="zip_extract", description="Extract zip"),
+        Binding(key="y", action="copy_path", description="Copy path to clipboard"),
+        Binding(key="d", action="duplicate", description="Duplicate"),
+        Binding(key="t", action="touch_timestamp", description="Touch with timestamp"),
         Binding(key="f5", action="refresh", description="Refresh Tree"),
     ]
     CSS_PATH = "styles.tcss"
@@ -152,6 +225,18 @@ class Administrador(App):  # iniciamos la app
         if self._tree:  # si el arbol existe
             self._tree.action_cursor_up()  # sube el cursor una vez
 
+    def action_collapse(self) -> None:  # h -> colapsa carpeta
+        if self._tree:
+            node = self._tree.cursor_node
+            if node and node.data and node.data.path.is_dir():
+                self._tree.action_collapse()  # colapsa el nodo actual
+
+    def action_expand(self) -> None:  # l -> expande carpeta
+        if self._tree:
+            node = self._tree.cursor_node
+            if node and node.data and node.data.path.is_dir():
+                self._tree.action_expand()  # expande el nodo actual
+
     def action_help(self) -> None:  # ? -> menu de help
         self.push_screen(VentanaAyuda())
 
@@ -160,7 +245,7 @@ class Administrador(App):  # iniciamos la app
             self._refrescar_arbol()  # usamos el helper centralizado
             self.notify("Árbol de archivos actualizado")
 
-    # --- Helpers reutilizables ---
+    # --- Helpers reutilizables (nuevos) ---
 
     def _get_selected_path(self) -> Path | None:  # obtiene el path del cursor
         if not self._tree:  # si no hay arbol -> None
@@ -193,6 +278,19 @@ class Administrador(App):  # iniciamos la app
             self._tree.reload_node(node.parent)
         else:
             self._tree.reload()
+
+    def _run_command(
+        self, cmd: list[str], success_msg: str
+    ) -> None:  # ejecuta comando externo
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            self.notify(success_msg)
+        except subprocess.CalledProcessError as e:
+            self.notify(f"Error: {e.stderr or e}", severity="error")
+        except FileNotFoundError:
+            self.notify("Comando no encontrado. ¿Está instalado?", severity="error")
+        except Exception as e:
+            self.notify(f"Error: {e}", severity="error")
 
     # --- Acciones de archivos ---
 
@@ -494,6 +592,216 @@ class Administrador(App):  # iniciamos la app
             VentanaNombres("Nuevo nombre completo (con extensión si aplica): "),
             on_modal_close,
         )
+
+    # ═══════════════════════════════════════════════════════
+    # NUEVAS FUNCIONES AGREGADAS
+    # ═══════════════════════════════════════════════════════
+
+    def action_edit(self) -> None:  # e -> Abrir archivo en $EDITOR
+        current_path = self._get_selected_path()  # ve que hay seleccionado
+
+        if not current_path:  # no hay nada
+            self.notify("No hay ningún archivo seleccionado.", severity="warning")
+            return
+
+        if current_path.is_dir():  # si es carpeta
+            self.notify("No se puede editar una carpeta.", severity="warning")
+            return
+
+        # Obtenemos el editor del sistema (vi, nano, code, etc.)
+        editor = os.environ.get("EDITOR", "vi")  # por defecto vi si no hay $EDITOR
+
+        # Abrimos el archivo en el editor externo
+        self._run_command([editor, str(current_path)], f"Archivo abierto en {editor}")
+
+    def action_open_external(self) -> None:  # o -> Abrir con app predeterminada
+        current_path = self._get_selected_path()  # ve que hay seleccionado
+
+        if not current_path:  # no hay nada
+            self.notify("No hay ningún archivo seleccionado.", severity="warning")
+            return
+
+        # Usamos xdg-open (Linux) o open (macOS) para abrir con la app por defecto
+        import sys
+
+        if sys.platform == "darwin":  # macOS
+            cmd = ["open", str(current_path)]
+        elif sys.platform == "win32":  # Windows
+            os.startfile(str(current_path))  # Windows tiene su propia funcion
+            self.notify(f"Abierto: {current_path.name}")
+            return
+        else:  # Linux y otros
+            cmd = ["xdg-open", str(current_path)]
+
+        self._run_command(cmd, f"Abierto: {current_path.name}")
+
+    def action_properties(self) -> None:  # p -> Ver propiedades del archivo
+        current_path = self._get_selected_path()  # ve que hay seleccionado
+
+        if not current_path:  # no hay nada
+            self.notify("No hay ningún archivo seleccionado.", severity="warning")
+            return
+
+        # Abrimos la ventana de propiedades con toda la info
+        self.push_screen(VentanaPropiedades(current_path))
+
+    def action_zip_compress(self) -> None:  # z -> Comprimir a .zip
+        current_path = self._get_selected_path()  # ve que hay seleccionado
+
+        if not current_path:  # no hay nada
+            self.notify("No hay ningún archivo seleccionado.", severity="warning")
+            return
+
+        # El nombre del zip sera el nombre original + .zip
+        zip_name = f"{current_path.name}.zip"
+        zip_path = current_path.parent / zip_name
+
+        # Si ya existe un zip con ese nombre, agregamos numero
+        counter = 1
+        while zip_path.exists():
+            zip_name = f"{current_path.name}_{counter}.zip"
+            zip_path = current_path.parent / zip_name
+            counter += 1
+
+        try:
+            import zipfile
+
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                if current_path.is_file():  # si es archivo
+                    zf.write(current_path, current_path.name)
+                else:  # si es carpeta, comprimimos todo recursivamente
+                    for file_path in current_path.rglob("*"):
+                        if file_path.is_file():
+                            arcname = file_path.relative_to(current_path.parent)
+                            zf.write(file_path, arcname)
+
+            self.notify(f"Comprimido: {zip_name}")
+            self._refrescar_arbol()
+
+        except Exception as e:
+            self.notify(f"Error al comprimir: {e}", severity="error")
+
+    def action_zip_extract(self) -> None:  # Z -> Descomprimir .zip
+        current_path = self._get_selected_path()  # ve que hay seleccionado
+
+        if not current_path:  # no hay nada
+            self.notify("No hay ningún archivo seleccionado.", severity="warning")
+            return
+
+        if not current_path.suffix.lower() == ".zip":  # si no es zip
+            self.notify("El archivo seleccionado no es un .zip", severity="warning")
+            return
+
+        # Carpeta destino sera el nombre del zip sin extension
+        extract_dir = current_path.with_suffix("")
+
+        # Si ya existe, agregamos numero
+        counter = 1
+        original_name = extract_dir.name
+        while extract_dir.exists():
+            extract_dir = current_path.parent / f"{original_name}_{counter}"
+            counter += 1
+
+        try:
+            import zipfile
+
+            with zipfile.ZipFile(current_path, "r") as zf:
+                zf.extractall(extract_dir)
+
+            self.notify(f"Extraído en: {extract_dir.name}")
+            self._refrescar_arbol()
+
+        except Exception as e:
+            self.notify(f"Error al extraer: {e}", severity="error")
+
+    def action_copy_path(self) -> None:  # y -> Copiar ruta al portapapeles
+        current_path = self._get_selected_path()  # ve que hay seleccionado
+
+        if not current_path:  # no hay nada
+            self.notify("No hay ningún archivo seleccionado.", severity="warning")
+            return
+
+        ruta = str(current_path.resolve())  # ruta absoluta
+
+        try:
+            # Intentamos usar xclip (Linux), pbcopy (macOS) o clip (Windows)
+            import sys
+
+            if sys.platform == "darwin":  # macOS
+                subprocess.run(["pbcopy"], input=ruta, text=True, check=True)
+            elif sys.platform == "win32":  # Windows
+                subprocess.run(["clip"], input=ruta, text=True, check=True)
+            else:  # Linux - intentamos xclip o wl-copy
+                try:
+                    subprocess.run(
+                        ["xclip", "-selection", "clipboard"],
+                        input=ruta,
+                        text=True,
+                        check=True,
+                    )
+                except FileNotFoundError:
+                    subprocess.run(["wl-copy"], input=ruta, text=True, check=True)
+
+            self.notify(f"Ruta copiada: {ruta}")
+
+        except Exception as e:
+            # Si no hay herramienta de clipboard, mostramos la ruta para copiar manual
+            self.notify(f"Clipboard no disponible. Ruta: {ruta}", severity="warning")
+
+    def action_duplicate(self) -> None:  # d -> Duplicar archivo/carpeta
+        current_path = self._get_selected_path()  # ve que hay seleccionado
+
+        if not current_path:  # no hay nada
+            self.notify("No hay ningún archivo seleccionado.", severity="warning")
+            return
+
+        # Creamos el nombre del duplicado: archivo.txt -> archivo (copia).txt
+        if current_path.is_file():
+            new_name = f"{current_path.stem} (copia){current_path.suffix}"
+        else:
+            new_name = f"{current_path.name} (copia)"
+
+        new_path = current_path.parent / new_name
+
+        # Si ya existe, agregamos numero
+        counter = 1
+        while new_path.exists():
+            if current_path.is_file():
+                new_name = f"{current_path.stem} (copia {counter}){current_path.suffix}"
+            else:
+                new_name = f"{current_path.name} (copia {counter})"
+            new_path = current_path.parent / new_name
+            counter += 1
+
+        try:
+            if current_path.is_file():
+                shutil.copy2(current_path, new_path)
+            else:
+                shutil.copytree(current_path, new_path)
+
+            self.notify(f"Duplicado: {new_name}")
+            self._refrescar_arbol()
+
+        except Exception as e:
+            self.notify(f"Error al duplicar: {e}", severity="error")
+
+    def action_touch_timestamp(self) -> None:  # t -> Crear archivo con timestamp
+        base_dir = self._get_base_dir()  # ve en que carpeta crear
+
+        from datetime import datetime
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")  # fecha y hora actual
+        file_name = f"archivo_{timestamp}.txt"  # nombre con timestamp
+
+        new_file_path = base_dir / file_name
+
+        try:
+            new_file_path.touch()  # crea el archivo vacio
+            self.notify(f"Archivo creado: {file_name}")
+            self._refrescar_arbol()
+
+        except Exception as e:
+            self.notify(f"Error al crear archivo: {e}", severity="error")
 
 
 if __name__ == "__main__":
