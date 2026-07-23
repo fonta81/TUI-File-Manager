@@ -160,7 +160,7 @@ class Administrador(App):  # iniciamos la app
             self._refrescar_arbol()  # usamos el helper centralizado
             self.notify("Árbol de archivos actualizado")
 
-    # --- Helpers reutilizables (nuevos) ---
+    # --- Helpers reutilizables ---
 
     def _get_selected_path(self) -> Path | None:  # obtiene el path del cursor
         if not self._tree:  # si no hay arbol -> None
