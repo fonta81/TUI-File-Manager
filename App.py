@@ -156,7 +156,7 @@ class VentanaPropiedades(ModalScreen):  # ventana para ver info detallada del ar
             id="help_dialog",
         )
 
-    def _format_size(self, size: int) -> str:  # convierte bytes a human readable
+    def _format_size(self, size: float) -> str:  # convierte bytes a human readable
         for unit in ["B", "KB", "MB", "GB", "TB"]:
             if size < 1024:
                 return f"{size:.2f} {unit}"
@@ -251,7 +251,7 @@ class Administrador(App):  # iniciamos la app
             path = Path.home() / str(path)[1:].lstrip("/\\")
         return path.resolve()  # convierte a ruta absoluta
 
-    def _sanitize_name(self, name: str) -> str:
+    def _sanitize_name(self, name: str) -> str:  # Remplaza errores del usuario
         # Sanitiza nombres de archivo para prevenir path traversal
         # Elimina caracteres de path y normaliza
         name = name.replace("\\", "").replace("/", "").replace("..", "")
@@ -635,10 +635,6 @@ class Administrador(App):  # iniciamos la app
             on_modal_close,
         )
 
-    # ═══════════════════════════════════════════════════════
-    # NUEVAS FUNCIONES AGREGADAS
-    # ═══════════════════════════════════════════════════════
-
     def action_edit(self) -> None:  # e -> Abrir archivo en $EDITOR
         current_path = self._get_selected_path()  # ve que hay seleccionado
 
@@ -667,7 +663,8 @@ class Administrador(App):  # iniciamos la app
             try:
                 # suspend() pausa Textual, ejecuta el comando en el terminal,
                 # y cuando termina, restaura la UI automaticamente
-                self.suspend(lambda: os.system(f'{editor} "{current_path}"'))
+                # self.suspend(lambda: os.system(f'{editor} "{current_path}"')) # linea original
+                self.suspend()
                 self.notify(f"Archivo editado: {current_path.name}")
                 self._refrescar_arbol()
             except Exception as e:
@@ -689,9 +686,6 @@ class Administrador(App):  # iniciamos la app
 
         # Usamos xdg-open (Linux), open (macOS) o startfile (Windows)
         # Estos comandos lanzan la app predeterminada y retornan
-        # PERO si usamos subprocess.run con capture_output=True,
-        # podemos bloquearnos esperando output que nunca llega
-        # La solucion es usar Popen con stdout/stderr a DEVNULL
         if sys.platform == "darwin":  # macOS
             self._run_command_nonblocking(
                 ["open", str(current_path)], f"Abierto: {current_path.name}"
