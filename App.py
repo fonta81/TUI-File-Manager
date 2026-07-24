@@ -17,7 +17,7 @@ from textual.widgets import DirectoryTree, Footer, Header, Input, Label, Static
 class VentanaConfirmacion(ModalScreen[bool]):  # Retorna True o False
     def __init__(self, mensaje: str, **kwargs):
         super().__init__(**kwargs)
-        self.mensaje = mensaje
+        self.mensaje = mensaje  # guardamos el mensaje a mostrar
 
     def compose(self) -> ComposeResult:  # mostramos el mensaje:
         texto_instrucciones = (
@@ -26,16 +26,20 @@ class VentanaConfirmacion(ModalScreen[bool]):  # Retorna True o False
         )
         yield Grid(
             Label("CONFIRMACIÓN", id="modal_title"),
+            # antes habia un Input aqui que robaba el foco y capturaba teclas
+            # ahora solo mostramos el texto y esperamos teclas directas
             Static(texto_instrucciones, id="modal_content"),
             id="modal_dialog",
         )
 
     def on_key(self, event) -> None:  # Permite responder con una sola tecla sin Enter
-        key = event.key.lower()
+        key = event.key.lower()  # convertimos a minusculas para comparar facil
         if key == "s":  # Si presiona S -> confirma
-            self.dismiss(True)
+            self.dismiss(True)  # cerramos modal devolviendo True
         elif key in ("n", "escape"):  # Si presiona N o Esc -> cancela
-            self.dismiss(False)
+            self.dismiss(False)  # cerramos modal devolviendo False
+
+    # ya no hay on_input_submitted porque quitamos el Input widget
 
 
 class VentanaAyuda(ModalScreen):  # ventana help
@@ -81,7 +85,7 @@ class VentanaAyuda(ModalScreen):  # ventana help
 class VentanaNombres(ModalScreen[str | None]):  # ventana que pedira nombres, ect...
     def __init__(self, placeholder_text: str = "Nombre: ", **kwargs):
         super().__init__(**kwargs)
-        self.placeholder_text = placeholder_text
+        self.placeholder_text = placeholder_text  # texto que se muestra en el input
 
     def compose(self) -> ComposeResult:
         yield Grid(  # pide el nombre al usuario -> lo guarda en la id
@@ -90,7 +94,7 @@ class VentanaNombres(ModalScreen[str | None]):  # ventana que pedira nombres, ec
         )
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        value = event.value.strip()  # Quita espacios:
+        value = event.value.strip()  # Quita espacios al inicio y final
         self.dismiss(
             value if value else None
         )  # cierra ventana y regresa valores, o None si vacio
@@ -124,12 +128,12 @@ class VentanaPropiedades(ModalScreen):  # ventana para ver info detallada del ar
     def compose(self) -> ComposeResult:
         # Obtenemos toda la info del archivo:
         try:
-            stat = self.file_path.stat()
-            size = stat.st_size
-            size_str = self._format_size(size)
+            stat = self.file_path.stat()  # obtenemos metadatos del archivo
+            size = stat.st_size  # tamaño en bytes
+            size_str = self._format_size(size)  # convertimos a formato legible
             perms = oct(stat.st_mode)[-3:]  # permisos en octal (ej: 644)
-            modified = self._format_time(stat.st_mtime)
-            created = self._format_time(stat.st_ctime)
+            modified = self._format_time(stat.st_mtime)  # fecha de modificacion
+            created = self._format_time(stat.st_ctime)  # fecha de creacion
             tipo = "Carpeta" if self.file_path.is_dir() else "Archivo"
             extension = self.file_path.suffix if self.file_path.suffix else "Ninguna"
 
@@ -156,7 +160,7 @@ class VentanaPropiedades(ModalScreen):  # ventana para ver info detallada del ar
         for unit in ["B", "KB", "MB", "GB", "TB"]:
             if size < 1024:
                 return f"{size:.2f} {unit}"
-            size /= 1024
+            size /= 1024  # dividimos entre 1024 para la siguiente unidad
         return f"{size:.2f} PB"
 
     def _format_time(self, timestamp: float) -> str:  # formatea fecha
@@ -195,7 +199,7 @@ class Administrador(App):  # iniciamos la app
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._tree = None  # aqui guardaremos el DirectoryTree para no estar llamando query_one todo el tiempo
+        self._tree = None  # aqui guardaremos el DirectoryTree
 
     def compose(self) -> ComposeResult:  # lo que se "Imprimira" en la terminal:
         self._tree = DirectoryTree("./")  # creamos el arbol y lo guardamos
@@ -248,7 +252,7 @@ class Administrador(App):  # iniciamos la app
         return path.resolve()  # convierte a ruta absoluta
 
     def _sanitize_name(self, name: str) -> str:
-        """Sanitiza nombres de archivo para prevenir path traversal."""
+        # Sanitiza nombres de archivo para prevenir path traversal
         # Elimina caracteres de path y normaliza
         name = name.replace("\\", "").replace("/", "").replace("..", "")
         # Elimina caracteres nulos y de control
@@ -281,15 +285,15 @@ class Administrador(App):  # iniciamos la app
             self.notify(f"Error: {e}", severity="error")
 
     def _run_command_nonblocking(self, cmd: list[str], success_msg: str) -> None:
-        """Ejecuta un comando sin bloquear el event loop de Textual."""
+        # Ejecuta un comando sin bloquear el event loop de Textual
+        # Usamos Popen con stdout/stderr a DEVNULL para no bloquear
         try:
-            # Usamos Popen para no bloquear, y un worker para monitorear
-            import asyncio
-
-            proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,  # desvincula el proceso de la terminal
             )
-            # Notificamos inmediatamente ya que el editor se abrió
             self.notify(success_msg)
         except Exception as e:
             self.notify(f"Error: {e}", severity="error")
@@ -650,17 +654,28 @@ class Administrador(App):  # iniciamos la app
         editor = os.environ.get("EDITOR", "vi")  # por defecto vi si no hay $EDITOR
 
         # Determinamos si es un editor de terminal o GUI
+        # Los editores de terminal necesitan que Textual se suspenda temporalmente
+        # porque compiten por el mismo terminal
         terminal_editors = {"vi", "vim", "nvim", "nano", "emacs", "micro", "joe"}
         editor_name = os.path.basename(editor).lower()
 
         if editor_name in terminal_editors:
-            # Para editores de terminal, usamos run que bloquea pero es correcto
-            # porque textual suspenderá la UI
-            self._run_command(
-                [editor, str(current_path)], f"Archivo abierto en {editor}"
-            )
+            # Para editores de terminal (vi, nano, etc.):
+            # Textual debe ceder el control del terminal al editor
+            # Usamos suspend() que detiene la app, ejecuta el comando,
+            # y al cerrar el editor, la app se reanuda automaticamente
+            try:
+                # suspend() pausa Textual, ejecuta el comando en el terminal,
+                # y cuando termina, restaura la UI automaticamente
+                self.suspend(lambda: os.system(f'{editor} "{current_path}"'))
+                self.notify(f"Archivo editado: {current_path.name}")
+                self._refrescar_arbol()
+            except Exception as e:
+                self.notify(f"Error al abrir editor: {e}", severity="error")
         else:
-            # Para editores GUI, no bloqueamos
+            # Para editores GUI (code, sublime, etc.):
+            # No compiten por el terminal, asi que los lanzamos en background
+            # con Popen para no bloquear la UI
             self._run_command_nonblocking(
                 [editor, str(current_path)], f"Archivo abierto en {editor}"
             )
@@ -672,19 +687,28 @@ class Administrador(App):  # iniciamos la app
             self.notify("No hay ningún archivo seleccionado.", severity="warning")
             return
 
-        # Usamos xdg-open (Linux) o open (macOS) para abrir con la app por defecto
+        # Usamos xdg-open (Linux), open (macOS) o startfile (Windows)
+        # Estos comandos lanzan la app predeterminada y retornan
+        # PERO si usamos subprocess.run con capture_output=True,
+        # podemos bloquearnos esperando output que nunca llega
+        # La solucion es usar Popen con stdout/stderr a DEVNULL
         if sys.platform == "darwin":  # macOS
-            cmd = ["open", str(current_path)]
-            self._run_command_nonblocking(cmd, f"Abierto: {current_path.name}")
+            self._run_command_nonblocking(
+                ["open", str(current_path)], f"Abierto: {current_path.name}"
+            )
         elif sys.platform == "win32":  # Windows
             try:
-                os.startfile(str(current_path))  # Windows tiene su propia funcion
+                # os.startfile no bloquea, es la forma nativa de Windows
+                os.startfile(str(current_path))
                 self.notify(f"Abierto: {current_path.name}")
             except OSError as e:
                 self.notify(f"No se pudo abrir: {e}", severity="error")
         else:  # Linux y otros
-            cmd = ["xdg-open", str(current_path)]
-            self._run_command_nonblocking(cmd, f"Abierto: {current_path.name}")
+            # xdg-open puede quedarse esperando si la app escribe a stdout
+            # Por eso redirigimos a DEVNULL y no esperamos
+            self._run_command_nonblocking(
+                ["xdg-open", str(current_path)], f"Abierto: {current_path.name}"
+            )
 
     def action_properties(self) -> None:  # p -> Ver propiedades del archivo
         current_path = self._get_selected_path()  # ve que hay seleccionado
@@ -721,7 +745,9 @@ class Administrador(App):  # iniciamos la app
                 else:  # si es carpeta, comprimimos todo recursivamente
                     for file_path in current_path.rglob("*"):
                         if file_path.is_file():
-                            # FIX: Usamos relative_to(current_path) en lugar de current_path.parent
+                            # arcname es el nombre dentro del zip
+                            # relative_to(current_path) hace que la estructura
+                            # dentro del zip sea correcta, sin niveles extra
                             arcname = file_path.relative_to(current_path)
                             zf.write(file_path, arcname)
 
@@ -754,10 +780,14 @@ class Administrador(App):  # iniciamos la app
 
         try:
             with ZipFile(current_path, "r") as zf:
-                # FIX: Validación de seguridad contra path traversal en zips
+                # Validacion de seguridad contra Zip Slip
+                # Un zip malicioso puede contener rutas como ../../../etc/passwd
+                # que al extraerse escribirian fuera del directorio destino
                 for member in zf.namelist():
                     member_path = extract_dir / member
                     try:
+                        # relative_to lanza ValueError si member_path no esta
+                        # dentro de extract_dir, detectando el ataque
                         member_path.relative_to(extract_dir.resolve())
                     except ValueError:
                         raise ValueError(
