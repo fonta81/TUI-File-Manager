@@ -826,7 +826,9 @@ class Administrador(App):  # iniciamos la app
 
         except Exception as e:
             # Si no hay herramienta de clipboard, mostramos la ruta para copiar manual
-            self.notify(f"Clipboard no disponible. Ruta: {ruta}", severity="warning")
+            self.notify(
+                f"Clipboard no disponible. Ruta: {ruta}\nError: {e}", severity="warning"
+            )
 
     def action_duplicate(self) -> None:  # d -> Duplicar archivo/carpeta
         current_path = self._get_selected_path()  # ve que hay seleccionado
