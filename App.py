@@ -195,7 +195,7 @@ class Administrador(App):  # iniciamos la app
         Binding(key="t", action="touch_timestamp", description="Touch with timestamp"),
         Binding(key="f5", action="refresh", description="Refresh Tree"),
     ]
-    CSS_PATH = "styles.tcss"
+    CSS_PATH = "styles.css"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
