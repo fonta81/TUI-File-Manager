@@ -5,6 +5,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import ClassVar
 from zipfile import ZipFile
 
 from textual.app import App, ComposeResult
@@ -44,7 +45,9 @@ class VentanaConfirmacion(ModalScreen[bool]):  # Retorna True o False
 
 class VentanaAyuda(ModalScreen):  # ventana help
     # Atajos para cerrar la ayuda rápidamente con Esc, ? o q
-    BINDINGS = [Binding("escape,?,q", "dismiss", "Cerrar Ayuda")]
+    BINDINGS: ClassVar[list[Binding]] = [
+        Binding("escape,?,q", "dismiss", "Cerrar Ayuda")
+    ]
 
     def compose(self) -> ComposeResult:  # ayuda:
         texto_ayuda = (
@@ -102,7 +105,7 @@ class VentanaNombres(ModalScreen[str | None]):  # ventana que pedira nombres, ec
 
 class VentanaVisualizador(ModalScreen):  # ventana para ver contenido de archivos
     # Atajos para cerrar rápidamente
-    BINDINGS = [Binding("escape,q,v", "dismiss", "Cerrar")]
+    BINDINGS: ClassVar[list[Binding]] = [Binding("escape,q,v", "dismiss", "Cerrar")]
 
     def __init__(self, filename: str, content: str, **kwargs):
         super().__init__(**kwargs)
@@ -119,7 +122,7 @@ class VentanaVisualizador(ModalScreen):  # ventana para ver contenido de archivo
 
 class VentanaPropiedades(ModalScreen):  # ventana para ver info detallada del archivo
     # Atajos para cerrar
-    BINDINGS = [Binding("escape,q,p", "dismiss", "Cerrar")]
+    BINDINGS: ClassVar[list[Binding]] = [Binding("escape,q,p", "dismiss", "Cerrar")]
 
     def __init__(self, file_path: Path, **kwargs):
         super().__init__(**kwargs)
@@ -168,7 +171,9 @@ class VentanaPropiedades(ModalScreen):  # ventana para ver info detallada del ar
 
 
 class Administrador(App):  # iniciamos la app
-    BINDINGS = [  # las keys que se usaran, con su definicion:
+    BINDINGS: ClassVar[  # pyright: ignore
+        list[Binding]
+    ] = [  # las keys que se usaran, con su definicion:
         Binding(key="q", action="quit", description="Quit the app"),
         Binding(
             key="question_mark",
