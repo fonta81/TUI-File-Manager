@@ -41,7 +41,7 @@ A lightweight, keyboard-driven Terminal User Interface (TUI) file manager built 
 Run the main application file from your terminal:
 
 ```bash
-python App.py
+python main.py
 ```
 
 > **Note:** The application looks for a custom stylesheet named `styles.tcss` in the same directory for custom styling (modals, dialogs, colors).
