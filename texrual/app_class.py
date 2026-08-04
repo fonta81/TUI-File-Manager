@@ -9,7 +9,8 @@ from zipfile import ZipFile
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.widgets import DirectoryTree, Footer, Header
+from textual.widgets import Footer, Header, Static
+from .icon_tree import IconTree
 
 # Importando las clases de pantalla
 from .screens import (
@@ -56,12 +57,26 @@ class Administrador(App):  # iniciamos la app
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._tree = None  # aqui guardaremos el DirectoryTree
+        self._status_bar = Static("Seleccione un archivo", id="status_bar")
 
     def compose(self) -> ComposeResult:  # lo que se "Imprimira" en la terminal:
-        self._tree = DirectoryTree("./")  # creamos el arbol y lo guardamos
-        yield self._tree
-        yield Footer()
+        self._tree = IconTree("./")  # creamos el arbol y lo guardamos
+        self._tree.focus()
         yield Header()
+        yield self._tree
+        yield self._status_bar
+        yield Footer()
+
+    def on_tree_node_highlighted(self, event: IconTree.NodeHighlighted) -> None:
+        # Actualiza el status bar cuando se resalta un nodo
+        if event.node.data:
+            path = event.node.data.path
+            info = f" {path.name}"
+            if path.is_file():
+                info += f" ({path.stat().st_size} bytes)"
+            self._status_bar.update(info)
+        else:
+            self._status_bar.update(" Seleccione un archivo")
 
     # definimos las acciones que se habian asignado en el bindings:
     ###### definicion de acciones ######
