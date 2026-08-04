@@ -9,18 +9,17 @@ from zipfile import ZipFile
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Grid
-from textual.screen import ModalScreen
-from textual.widgets import DirectoryTree, Footer, Header, Input, Label, Static
+from textual.widgets import DirectoryTree, Footer, Header
 
 # Importando las clases de pantalla
 from .screens import (
-    VentanaConfirmacion,
     VentanaAyuda,
+    VentanaConfirmacion,
     VentanaNombres,
+    VentanaPropiedades,
     VentanaVisualizador,
-    VentanaPropiedades
 )
+
 
 class Administrador(App):  # iniciamos la app
     BINDINGS: ClassVar[  # pyright: ignore

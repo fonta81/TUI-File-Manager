@@ -1,12 +1,13 @@
+from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
-from datetime import datetime
 
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Grid
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, Static
+
 
 class VentanaConfirmacion(ModalScreen[bool]):  # Retorna True o False
     def __init__(self, mensaje: str, **kwargs):
