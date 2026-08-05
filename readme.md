@@ -81,155 +81,165 @@ The application uses a custom Textual CSS (`styles.tcss`) file for a polished, d
 
 ```tcss
 /* ============================================================
-   styles.tcss — Styles for the File Manager (Textual)
+   styles.tcss — Estilos para el Administrador de Archivos (Textual)
    ============================================================ */
 
-/* ---------- Main Screen ---------- */
+/* ---------- Pantalla principal ---------- */
 Screen {
-    background: #10141a;
-    color: #d8dee9;
+    background: #2e3440; /* Nord0 (Darker) */
+    color: #d8dee9;      /* Nord4 */
     layout: vertical;
 }
 
 Header {
-    background: #1f2733;
-    color: #88c0d0;
+    background: #3b4252; /* Nord1 */
+    color: #88c0d0;      /* Nord8 */
     text-style: bold;
     dock: top;
+    padding: 0 1;
 }
 
 Footer {
-    background: #1f2733;
-    color: #d8dee9;
+    background: #3b4252; /* Nord1 */
+    color: #d8dee9;      /* Nord4 */
     dock: bottom;
+    padding: 0 1;
 }
 
 Footer > .footer--key {
-    color: #88c0d0;
+    color: #81a1c1;      /* Nord9 */
     text-style: bold;
 }
 
 Footer > .footer--description {
-    color: #a3b1c2;
+    color: #a3b1c2;      /* Nord5 */
 }
 
-/* ---------- Directory Tree ---------- */
+/* ---------- Árbol de directorios ---------- */
 DirectoryTree {
-    background: #10141a;
-    color: #d8dee9;
-    border: round #2e3947;
+    background: #2e3440; /* Nord0 */
+    color: #d8dee9;      /* Nord4 */
+    border: none;
     padding: 1 2;
-    scrollbar-color: #3b4a5a;
-    scrollbar-color-hover: #88c0d0;
-    scrollbar-background: #10141a;
+    scrollbar-color: #434c5e; /* Nord2 */
+    scrollbar-color-hover: #88c0d0; /* Nord8 */
+    scrollbar-background: #2e3440; /* Nord0 */
 }
 
 DirectoryTree:focus {
-    border: round #88c0d0;
+    border: none;
 }
 
 DirectoryTree > .directory-tree--folder {
-    color: #ebcb8b;
+    color: #ebcb8b; /* Nord13 */
     text-style: bold;
 }
 
 DirectoryTree > .directory-tree--file {
-    color: #d8dee9;
+    color: #eceff4; /* Nord6 */
 }
 
 DirectoryTree > .directory-tree--extension {
-    color: #a3b1c2;
+    color: #5e81ac; /* Nord10 */
     text-style: italic;
 }
 
 DirectoryTree > .tree--cursor {
-    background: #3b4a5a;
-    color: #eceff4;
+    background: #434c5e; /* Nord2 */
+    color: #ffffff;
     text-style: bold;
 }
 
 DirectoryTree > .tree--highlight {
-    background: #2e3947;
+    background: #3b4252; /* Nord1 */
 }
 
 /* ============================================================
-   Modals (ModalScreen) — semi-transparent background
+   Modales (ModalScreen) — fondo semitransparente
    ============================================================ */
 VentanaConfirmacion,
 VentanaAyuda,
 VentanaNombres {
     align: center middle;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(46, 52, 64, 0.8);
 }
 
-/* ---------- Confirmation / Rename / Move / etc. Dialog ---------- */
+/* ---------- Dialogo de confirmación / renombrar / mover / etc. ---------- */
 #modal_dialog {
     grid-size: 1 3;
     grid-gutter: 1 2;
     grid-rows: auto auto auto;
-    padding: 1 3;
+    padding: 2 4;
     width: 60;
     height: auto;
     max-height: 20;
-    border: thick #88c0d0;
-    background: #1b212b;
+    border: thick #88c0d0; /* Nord8 */
+    background: #3b4252; /* Nord1 */
 }
 
 #modal_title {
     content-align: center middle;
     width: 100%;
     text-style: bold;
-    color: #eceff4;
-    background: #2e3947;
+    color: #2e3440; /* Nord0 */
+    background: #88c0d0; /* Nord8 */
     padding: 0 1;
 }
 
 #modal_content {
     width: 100%;
-    color: #d8dee9;
+    color: #d8dee9; /* Nord4 */
     padding: 1 0;
 }
 
 #confirm_input,
 #folder_name {
-    border: round #3b4a5a;
-    background: #10141a;
-    color: #eceff4;
+    border: round #434c5e; /* Nord2 */
+    background: #2e3440; /* Nord0 */
+    color: #eceff4; /* Nord6 */
     padding: 0 1;
 }
 
 #confirm_input:focus,
 #folder_name:focus {
-    border: round #88c0d0;
+    border: round #88c0d0; /* Nord8 */
 }
 
-/* ---------- Help / File Viewer Window ---------- */
+/* ---------- Status bar ---------- */
+#status_bar {
+    background: #434c5e; /* Nord2 */
+    color: #eceff4;      /* Nord6 */
+    padding: 0 1;
+    dock: bottom;
+}
+
+/* ---------- Ventana de ayuda / visor de archivo ---------- */
 #help_dialog {
     grid-size: 1 2;
     grid-gutter: 1;
     grid-rows: auto 1fr;
-    padding: 1 3;
+    padding: 2 4;
     width: 80;
     height: 80%;
-    border: thick #ebcb8b;
-    background: #1b212b;
+    border: thick #ebcb8b; /* Nord13 */
+    background: #3b4252; /* Nord1 */
 }
 
 #help_title {
     content-align: center middle;
     width: 100%;
     text-style: bold;
-    color: #1b212b;
-    background: #ebcb8b;
+    color: #2e3440; /* Nord0 */
+    background: #ebcb8b; /* Nord13 */
     padding: 0 1;
 }
 
 #help_content {
     width: 100%;
     height: 1fr;
-    color: #d8dee9;
+    color: #d8dee9; /* Nord4 */
     padding: 1 2;
-    border: round #2e3947;
+    border: none;
     overflow-y: auto;
 }
 ```
